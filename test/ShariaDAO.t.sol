@@ -164,19 +164,23 @@ contract TestShariaDAO is Test {
         assertEq(dao.getUserReputation(regularUser), 3);
     }
 
-    function testFail_nonMuftiCannotProposeToken() public {
+    function test_RevertWhen_NonMuftiProposesToken() public {
         vm.startPrank(regularUser);
+        bytes32 role = dao.MUFTI_ROLE();
+        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", regularUser, role));
         dao.proposeToken(address(token), "Test Sharia Token", "TST", "ipfs://QmTest123");
         vm.stopPrank();
     }
 
-    function testFail_nonOwnerCannotAddMufti() public {
+    function test_RevertWhen_NonOwnerAddsMufti() public {
         vm.startPrank(regularUser);
+        bytes32 role = dao.OWNER_ROLE();
+        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", regularUser, role));
         dao.addMufti(address(7));
         vm.stopPrank();
     }
 
-    function testFail_insufficientReputationCannotVote() public {
+    function test_RevertWhen_InsufficientReputationVotes() public {
         // First create a proposal
         vm.startPrank(mufti);
         dao.proposeToken(address(token), "Test Sharia Token", "TST", "ipfs://QmTest123");
@@ -184,6 +188,7 @@ contract TestShariaDAO is Test {
 
         // Try to vote with a user who has no reputation
         vm.startPrank(regularUser);
+        vm.expectRevert("Insufficient reputation to perform this action");
         dao.vote(0, true);
         vm.stopPrank();
     }

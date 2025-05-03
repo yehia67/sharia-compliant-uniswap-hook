@@ -77,21 +77,25 @@ contract TestShariaWhitelist is Test {
         assertFalse(isWhitelisted);
     }
 
-    function testFail_nonDAOCannotWhitelistToken() public {
+    function test_RevertWhen_NonDAOWhitelistsToken() public {
         // Try to whitelist a token from a non-DAO address
         vm.startPrank(owner);
+        bytes32 role = whitelist.DAO_ROLE();
+        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", owner, role));
         whitelist.whitelistToken(address(token), "Test Sharia Token", "TST", whitelistedBy, block.timestamp);
         vm.stopPrank();
     }
 
-    function testFail_nonOwnerCannotSetDAOContract() public {
+    function test_RevertWhen_NonOwnerSetsDAOContract() public {
         // Try to set the DAO contract from a non-owner address
         vm.startPrank(address(5));
+        bytes32 role = whitelist.OWNER_ROLE();
+        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", address(5), role));
         whitelist.setDAOContract(address(6));
         vm.stopPrank();
     }
 
-    function testFail_nonOwnerCannotEmergencyRemove() public {
+    function test_RevertWhen_NonOwnerEmergencyRemoves() public {
         // First whitelist a token
         vm.startPrank(daoContract);
         whitelist.whitelistToken(address(token), "Test Sharia Token", "TST", whitelistedBy, block.timestamp);
@@ -99,6 +103,8 @@ contract TestShariaWhitelist is Test {
 
         // Try to emergency remove it from a non-owner address
         vm.startPrank(address(5));
+        bytes32 role = whitelist.OWNER_ROLE();
+        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", address(5), role));
         whitelist.emergencyRemoveFromWhitelist(address(token));
         vm.stopPrank();
     }
