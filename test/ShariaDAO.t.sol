@@ -21,13 +21,13 @@ contract TestShariaDAO is Test {
         // Deploy the whitelist contract first
         vm.startPrank(owner);
         whitelist = new ShariaWhitelist();
-        
+
         // Deploy the DAO with reference to the whitelist
         dao = new ShariaDAO(address(whitelist));
-        
+
         // Set the DAO as the authorized contract in the whitelist
         whitelist.setDAOContract(address(dao));
-        
+
         // Add a mufti to the DAO
         dao.addMufti(mufti);
         vm.stopPrank();
@@ -44,7 +44,7 @@ contract TestShariaDAO is Test {
 
         // Check that the new mufti has the MUFTI_ROLE
         assertTrue(dao.hasRole(dao.MUFTI_ROLE(), newMufti));
-        
+
         // Check that the new mufti has initial reputation
         assertEq(dao.getUserReputation(newMufti), 5);
     }
@@ -60,16 +60,11 @@ contract TestShariaDAO is Test {
 
     function test_proposeToken() public {
         vm.startPrank(mufti);
-        dao.proposeToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            "ipfs://QmTest123"
-        );
+        dao.proposeToken(address(token), "Test Sharia Token", "TST", "ipfs://QmTest123");
         vm.stopPrank();
 
         // Check that the proposal was created
-        (address proposer, address tokenAddress, , , , , , ) = dao.getProposalInfo(0);
+        (address proposer, address tokenAddress,,,,,,) = dao.getProposalInfo(0);
         assertEq(proposer, mufti);
         assertEq(tokenAddress, address(token));
     }
@@ -77,12 +72,7 @@ contract TestShariaDAO is Test {
     function test_voteOnProposal() public {
         // First create a proposal
         vm.startPrank(mufti);
-        dao.proposeToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            "ipfs://QmTest123"
-        );
+        dao.proposeToken(address(token), "Test Sharia Token", "TST", "ipfs://QmTest123");
         vm.stopPrank();
 
         // Grant reputation to another mufti so they can vote
@@ -97,7 +87,7 @@ contract TestShariaDAO is Test {
         vm.stopPrank();
 
         // Check that the vote was counted
-        (, , , , , uint256 yesVotes, uint256 noVotes, ) = dao.getProposalInfo(0);
+        (,,,,, uint256 yesVotes, uint256 noVotes,) = dao.getProposalInfo(0);
         // The vote weight is calculated using sqrt(reputation * 10^18) / 10^9
         // For reputation = 5, this gives sqrt(5 * 10^18) / 10^9 ≈ 2.2 * 10^9 / 10^9 ≈ 2
         assertEq(yesVotes, 2);
@@ -107,23 +97,18 @@ contract TestShariaDAO is Test {
     function test_finalizeProposal() public {
         // First create a proposal
         vm.startPrank(mufti);
-        dao.proposeToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            "ipfs://QmTest123"
-        );
+        dao.proposeToken(address(token), "Test Sharia Token", "TST", "ipfs://QmTest123");
         vm.stopPrank();
 
         // First, lower the quorum requirement to make the test pass
         vm.startPrank(owner);
         dao.setGovernanceParameters(
-            7 days,  // keep the same voting period
-            1,       // keep the same min reputation
-            4,       // lower quorum to 4 instead of 10
-            5        // keep the same reputation reward
+            7 days, // keep the same voting period
+            1, // keep the same min reputation
+            4, // lower quorum to 4 instead of 10
+            5 // keep the same reputation reward
         );
-        
+
         // Add enough votes to pass the proposal
         address voter1 = address(5);
         address voter2 = address(6);
@@ -157,9 +142,9 @@ contract TestShariaDAO is Test {
         vm.startPrank(owner);
         dao.setGovernanceParameters(
             14 days, // new voting period
-            2,       // new min reputation
-            20,      // new quorum
-            10       // new reputation reward
+            2, // new min reputation
+            20, // new quorum
+            10 // new reputation reward
         );
         vm.stopPrank();
 
@@ -181,12 +166,7 @@ contract TestShariaDAO is Test {
 
     function testFail_nonMuftiCannotProposeToken() public {
         vm.startPrank(regularUser);
-        dao.proposeToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            "ipfs://QmTest123"
-        );
+        dao.proposeToken(address(token), "Test Sharia Token", "TST", "ipfs://QmTest123");
         vm.stopPrank();
     }
 
@@ -199,12 +179,7 @@ contract TestShariaDAO is Test {
     function testFail_insufficientReputationCannotVote() public {
         // First create a proposal
         vm.startPrank(mufti);
-        dao.proposeToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            "ipfs://QmTest123"
-        );
+        dao.proposeToken(address(token), "Test Sharia Token", "TST", "ipfs://QmTest123");
         vm.stopPrank();
 
         // Try to vote with a user who has no reputation

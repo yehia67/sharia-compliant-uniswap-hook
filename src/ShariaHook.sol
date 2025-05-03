@@ -29,10 +29,7 @@ contract ShariaHook is BaseHook {
      * @param _manager The Uniswap v4 pool manager
      * @param _whitelistContract The address of the Sharia whitelist contract
      */
-    constructor(
-        IPoolManager _manager,
-        address _whitelistContract
-    ) BaseHook(_manager) {
+    constructor(IPoolManager _manager, address _whitelistContract) BaseHook(_manager) {
         require(_whitelistContract != address(0), "Invalid whitelist contract address");
         whitelistContract = IShariaWhitelist(_whitelistContract);
     }
@@ -41,29 +38,23 @@ contract ShariaHook is BaseHook {
      * @dev Set up hook permissions
      * @return Hooks.Permissions The permissions for this hook
      */
-    function getHookPermissions()
-        public
-        pure
-        override
-        returns (Hooks.Permissions memory)
-    {
-        return
-            Hooks.Permissions({
-                beforeInitialize: false,
-                afterInitialize: false,
-                beforeAddLiquidity: true,
-                beforeRemoveLiquidity: false,
-                afterAddLiquidity: false,
-                afterRemoveLiquidity: false,
-                beforeSwap: true,
-                afterSwap: false,
-                beforeDonate: false,
-                afterDonate: false,
-                beforeSwapReturnDelta: false,
-                afterSwapReturnDelta: false,
-                afterAddLiquidityReturnDelta: false,
-                afterRemoveLiquidityReturnDelta: false
-            });
+    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
+        return Hooks.Permissions({
+            beforeInitialize: false,
+            afterInitialize: false,
+            beforeAddLiquidity: true,
+            beforeRemoveLiquidity: false,
+            afterAddLiquidity: false,
+            afterRemoveLiquidity: false,
+            beforeSwap: true,
+            afterSwap: false,
+            beforeDonate: false,
+            afterDonate: false,
+            beforeSwapReturnDelta: false,
+            afterSwapReturnDelta: false,
+            afterAddLiquidityReturnDelta: false,
+            afterRemoveLiquidityReturnDelta: false
+        });
     }
 
     /**
@@ -89,12 +80,11 @@ contract ShariaHook is BaseHook {
      * @return BeforeSwapDelta No delta changes
      * @return uint24 No fee changes
      */
-    function _beforeSwap(
-        address,
-        PoolKey calldata key,
-        IPoolManager.SwapParams calldata,
-        bytes calldata
-    ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
+    function _beforeSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata, bytes calldata)
+        internal
+        override
+        returns (bytes4, BeforeSwapDelta, uint24)
+    {
         // Check if both tokens in the pair are whitelisted
         _checkTokenCompliance(key);
         return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
@@ -108,11 +98,11 @@ contract ShariaHook is BaseHook {
         // Get token addresses from Currency objects
         address token0 = key.currency0.isAddressZero() ? address(0) : Currency.unwrap(key.currency0);
         address token1 = key.currency1.isAddressZero() ? address(0) : Currency.unwrap(key.currency1);
-        
+
         // Native ETH (address(0)) is always considered compliant
         bool token0Compliant = token0 == address(0) ? true : whitelistContract.isTokenWhitelisted(token0);
         bool token1Compliant = token1 == address(0) ? true : whitelistContract.isTokenWhitelisted(token1);
-        
+
         // Revert if either token is not whitelisted
         require(token0Compliant, "Token0 is not Sharia-compliant");
         require(token1Compliant, "Token1 is not Sharia-compliant");

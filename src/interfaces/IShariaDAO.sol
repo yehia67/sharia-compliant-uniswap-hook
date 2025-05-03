@@ -7,8 +7,14 @@ pragma solidity 0.8.26;
  */
 interface IShariaDAO {
     // Enums
-    enum ProposalStatus { Pending, Active, Passed, Rejected, Executed }
-    
+    enum ProposalStatus {
+        Pending,
+        Active,
+        Passed,
+        Rejected,
+        Executed
+    }
+
     // Events
     event ProposalCreated(uint256 indexed proposalId, address indexed proposer, address tokenAddress);
     event Voted(uint256 indexed proposalId, address indexed voter, bool support, uint256 weight);
@@ -16,22 +22,25 @@ interface IShariaDAO {
     event ReputationChanged(address indexed user, uint256 newReputation);
     event MuftiAdded(address indexed mufti);
     event MuftiRemoved(address indexed mufti);
-    
+
     // View functions
     function OWNER_ROLE() external view returns (bytes32);
     function MUFTI_ROLE() external view returns (bytes32);
-    function proposals(uint256 proposalId) external view returns (
-        address proposer,
-        address tokenAddress,
-        string memory tokenName,
-        string memory tokenSymbol,
-        string memory complianceDocumentation,
-        uint256 proposalTime,
-        uint256 votingDeadline,
-        uint256 yesVotes,
-        uint256 noVotes,
-        ProposalStatus status
-    );
+    function proposals(uint256 proposalId)
+        external
+        view
+        returns (
+            address proposer,
+            address tokenAddress,
+            string memory tokenName,
+            string memory tokenSymbol,
+            string memory complianceDocumentation,
+            uint256 proposalTime,
+            uint256 votingDeadline,
+            uint256 yesVotes,
+            uint256 noVotes,
+            ProposalStatus status
+        );
     function reputation(address user) external view returns (uint256);
     function proposalCount() external view returns (uint256);
     function votingPeriod() external view returns (uint256);
@@ -39,17 +48,20 @@ interface IShariaDAO {
     function quorum() external view returns (uint256);
     function reputationReward() external view returns (uint256);
     function getUserReputation(address user) external view returns (uint256);
-    function getProposalInfo(uint256 proposalId) external view returns (
-        address proposer,
-        address tokenAddress,
-        string memory tokenName,
-        string memory tokenSymbol,
-        uint256 votingDeadline,
-        uint256 yesVotes,
-        uint256 noVotes,
-        ProposalStatus status
-    );
-    
+    function getProposalInfo(uint256 proposalId)
+        external
+        view
+        returns (
+            address proposer,
+            address tokenAddress,
+            string memory tokenName,
+            string memory tokenSymbol,
+            uint256 votingDeadline,
+            uint256 yesVotes,
+            uint256 noVotes,
+            ProposalStatus status
+        );
+
     // External functions
     function addMufti(address mufti) external;
     function removeMufti(address mufti) external;

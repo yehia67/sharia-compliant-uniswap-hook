@@ -25,7 +25,7 @@ import {IShariaWhitelist} from "../src/interfaces/IShariaWhitelist.sol";
 // Mock whitelist contract for testing
 contract MockShariaWhitelist is IShariaWhitelist {
     mapping(address => WhitelistedToken) private _whitelistedTokens;
-    
+
     function whitelistToken(
         address tokenAddress,
         string calldata name,
@@ -43,20 +43,24 @@ contract MockShariaWhitelist is IShariaWhitelist {
         });
         emit TokenWhitelisted(tokenAddress, name, symbol);
     }
-    
+
     function emergencyRemoveFromWhitelist(address tokenAddress) external {
         _whitelistedTokens[tokenAddress].isWhitelisted = false;
         emit TokenRemovedFromWhitelist(tokenAddress);
     }
-    
-    function whitelistedTokens(address tokenAddress) external view returns (
-        string memory name,
-        string memory symbol,
-        address tokenAddress_,
-        address whitelistedBy,
-        uint256 whitelistedTime,
-        bool isWhitelisted
-    ) {
+
+    function whitelistedTokens(address tokenAddress)
+        external
+        view
+        returns (
+            string memory name,
+            string memory symbol,
+            address tokenAddress_,
+            address whitelistedBy,
+            uint256 whitelistedTime,
+            bool isWhitelisted
+        )
+    {
         WhitelistedToken memory token = _whitelistedTokens[tokenAddress];
         return (
             token.name,
@@ -67,51 +71,49 @@ contract MockShariaWhitelist is IShariaWhitelist {
             token.isWhitelisted
         );
     }
-    
+
     function isTokenWhitelisted(address tokenAddress) external view returns (bool) {
         return _whitelistedTokens[tokenAddress].isWhitelisted;
     }
-    
-    function getTokenInfo(address tokenAddress) external view returns (
-        string memory name,
-        string memory symbol,
-        address whitelistedBy,
-        uint256 whitelistedTime,
-        bool isWhitelisted
-    ) {
+
+    function getTokenInfo(address tokenAddress)
+        external
+        view
+        returns (
+            string memory name,
+            string memory symbol,
+            address whitelistedBy,
+            uint256 whitelistedTime,
+            bool isWhitelisted
+        )
+    {
         WhitelistedToken memory token = _whitelistedTokens[tokenAddress];
-        return (
-            token.name,
-            token.symbol,
-            token.whitelistedBy,
-            token.whitelistedTime,
-            token.isWhitelisted
-        );
+        return (token.name, token.symbol, token.whitelistedBy, token.whitelistedTime, token.isWhitelisted);
     }
 }
 
 contract TestShariaHook is Test, Deployers {
-	using CurrencyLibrary for Currency;
+    using CurrencyLibrary for Currency;
 
-	MockERC20 token; // our token to use in the ETH-TOKEN pool
+    MockERC20 token; // our token to use in the ETH-TOKEN pool
     MockERC20 nonCompliantToken; // token that is not whitelisted
 
-	// Native tokens are represented by address(0)
-	Currency ethCurrency = Currency.wrap(address(0));
-	Currency tokenCurrency;
+    // Native tokens are represented by address(0)
+    Currency ethCurrency = Currency.wrap(address(0));
+    Currency tokenCurrency;
     Currency nonCompliantTokenCurrency;
 
-	ShariaHook hook;
+    ShariaHook hook;
     MockShariaWhitelist whitelist;
 
-	function setUp() public {
+    function setUp() public {
         // Deploy PoolManager and Router contracts
         deployFreshManagerAndRouters();
 
         // Deploy our TOKEN contract
         token = new MockERC20("Test Token", "TEST", 18);
         tokenCurrency = Currency.wrap(address(token));
-        
+
         // Deploy a non-compliant token
         nonCompliantToken = new MockERC20("Non-Compliant Token", "NCT", 18);
         nonCompliantTokenCurrency = Currency.wrap(address(nonCompliantToken));
@@ -122,25 +124,13 @@ contract TestShariaHook is Test, Deployers {
 
         // Deploy the mock whitelist contract
         whitelist = new MockShariaWhitelist();
-        
+
         // Whitelist our test token
-        whitelist.whitelistToken(
-            address(token),
-            "Test Token",
-            "TEST",
-            address(this),
-            block.timestamp
-        );
+        whitelist.whitelistToken(address(token), "Test Token", "TEST", address(this), block.timestamp);
 
         // Deploy hook to an address that has the proper flags set
-        uint160 flags = uint160(
-            Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG
-        );
-        deployCodeTo(
-            "ShariaHook.sol",
-            abi.encode(manager, address(whitelist)),
-            address(flags)
-        );
+        uint160 flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG);
+        deployCodeTo("ShariaHook.sol", abi.encode(manager, address(whitelist)), address(flags));
 
         // Deploy our hook
         hook = ShariaHook(address(flags));
@@ -152,7 +142,7 @@ contract TestShariaHook is Test, Deployers {
         nonCompliantToken.approve(address(modifyLiquidityRouter), type(uint256).max);
 
         // Initialize a pool with compliant token
-        (key, ) = initPool(
+        (key,) = initPool(
             ethCurrency, // Currency 0 = ETH
             tokenCurrency, // Currency 1 = TOKEN
             hook, // Hook Contract
@@ -166,11 +156,7 @@ contract TestShariaHook is Test, Deployers {
 
         uint160 sqrtPriceAtTickLower = TickMath.getSqrtPriceAtTick(-60);
         uint256 ethToAdd = 0.1 ether;
-        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmount0(
-            sqrtPriceAtTickLower,
-            SQRT_PRICE_1_1,
-            ethToAdd
-        );
+        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmount0(sqrtPriceAtTickLower, SQRT_PRICE_1_1, ethToAdd);
 
         // Should succeed because token is whitelisted
         modifyLiquidityRouter.modifyLiquidity{value: ethToAdd}(
@@ -183,22 +169,18 @@ contract TestShariaHook is Test, Deployers {
             }),
             hookData
         );
-        
+
         // If we got here without reverting, the test passes
         assertTrue(true, "Adding liquidity with compliant token should succeed");
     }
-    
+
     function test_swapWithCompliantToken() public {
         // First add liquidity to have something to swap against
         bytes memory hookData = abi.encode(address(this));
 
         uint160 sqrtPriceAtTickLower = TickMath.getSqrtPriceAtTick(-60);
         uint256 ethToAdd = 0.1 ether;
-        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmount0(
-            sqrtPriceAtTickLower,
-            SQRT_PRICE_1_1,
-            ethToAdd
-        );
+        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmount0(sqrtPriceAtTickLower, SQRT_PRICE_1_1, ethToAdd);
 
         modifyLiquidityRouter.modifyLiquidity{value: ethToAdd}(
             key,
@@ -219,13 +201,10 @@ contract TestShariaHook is Test, Deployers {
                 amountSpecified: -0.001 ether, // Exact input for output swap
                 sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             }),
-            PoolSwapTest.TestSettings({
-                takeClaims: false,
-                settleUsingBurn: false
-            }),
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
             hookData
         );
-        
+
         // If we got here without reverting, the test passes
         assertTrue(true, "Swapping with compliant token should succeed");
     }

@@ -35,13 +35,13 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
     // State variables
     mapping(uint256 => Proposal) public proposals;
     mapping(address => uint256) public reputation;
-    
+
     uint256 public proposalCount;
     uint256 public votingPeriod = 7 days;
     uint256 public minReputation = 1;
     uint256 public quorum = 10; // Minimum total votes needed
     uint256 public reputationReward = 5; // Reputation gained for successful proposal
-    
+
     // Reference to the whitelist contract
     IShariaWhitelist public whitelistContract;
 
@@ -51,10 +51,10 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
     constructor(address _whitelistContract) {
         require(_whitelistContract != address(0), "Invalid whitelist contract address");
         whitelistContract = IShariaWhitelist(_whitelistContract);
-        
+
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(OWNER_ROLE, msg.sender);
-        
+
         // Give the contract creator initial reputation
         reputation[msg.sender] = 10;
     }
@@ -74,13 +74,13 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
     function addMufti(address mufti) external onlyRole(OWNER_ROLE) {
         require(mufti != address(0), "Invalid address");
         _grantRole(MUFTI_ROLE, mufti);
-        
+
         // Grant initial reputation to Mufti
         if (reputation[mufti] == 0) {
             reputation[mufti] = 5;
             emit ReputationChanged(mufti, 5);
         }
-        
+
         emit MuftiAdded(mufti);
     }
 
@@ -111,17 +111,17 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
         require(bytes(tokenSymbol).length > 0, "Token symbol cannot be empty");
         require(bytes(complianceDocumentation).length > 0, "Compliance documentation required");
         require(!whitelistContract.isTokenWhitelisted(tokenAddress), "Token already whitelisted");
-        
+
         // Validate token contract has required ERC20 functions
         try IERC20(tokenAddress).totalSupply() returns (uint256) {
             // Successfully called totalSupply, token implements ERC20
         } catch {
             revert("Address is not a valid ERC20 token");
         }
-        
+
         uint256 proposalId = proposalCount;
         Proposal storage newProposal = proposals[proposalId];
-        
+
         newProposal.proposer = msg.sender;
         newProposal.tokenAddress = tokenAddress;
         newProposal.tokenName = tokenName;
@@ -130,9 +130,9 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
         newProposal.proposalTime = block.timestamp;
         newProposal.votingDeadline = block.timestamp + votingPeriod;
         newProposal.status = ProposalStatus.Active;
-        
+
         proposalCount++;
-        
+
         emit ProposalCreated(proposalId, msg.sender, tokenAddress);
     }
 
@@ -143,25 +143,25 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
      */
     function vote(uint256 proposalId, bool support) external hasMinimumReputation nonReentrant {
         require(proposalId < proposalCount, "Proposal does not exist");
-        
+
         Proposal storage proposal = proposals[proposalId];
-        
+
         require(proposal.status == ProposalStatus.Active, "Proposal is not active");
         require(block.timestamp < proposal.votingDeadline, "Voting period has ended");
         require(!proposal.hasVoted[msg.sender], "Already voted");
-        
+
         // Calculate vote weight based on reputation (sqrt of reputation for non-linear scaling)
-        uint256 voteWeight = Math.sqrt(reputation[msg.sender] * 10**18) / 10**9;
+        uint256 voteWeight = Math.sqrt(reputation[msg.sender] * 10 ** 18) / 10 ** 9;
         if (voteWeight == 0) voteWeight = 1; // Minimum vote weight is 1
-        
+
         if (support) {
             proposal.yesVotes += voteWeight;
         } else {
             proposal.noVotes += voteWeight;
         }
-        
+
         proposal.hasVoted[msg.sender] = true;
-        
+
         emit Voted(proposalId, msg.sender, support, voteWeight);
     }
 
@@ -171,21 +171,21 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
      */
     function finalizeProposal(uint256 proposalId) external nonReentrant {
         require(proposalId < proposalCount, "Proposal does not exist");
-        
+
         Proposal storage proposal = proposals[proposalId];
-        
+
         require(proposal.status == ProposalStatus.Active, "Proposal is not active");
         require(block.timestamp >= proposal.votingDeadline, "Voting period has not ended");
-        
+
         bool passed = false;
         uint256 totalVotes = proposal.yesVotes + proposal.noVotes;
-        
+
         // Check if quorum reached and majority in favor
         if (totalVotes >= quorum && proposal.yesVotes > proposal.noVotes) {
             passed = true;
-            
+
             // Call the whitelist contract to whitelist the token
-            (bool success, ) = address(whitelistContract).call(
+            (bool success,) = address(whitelistContract).call(
                 abi.encodeWithSignature(
                     "whitelistToken(address,string,string,address,uint256)",
                     proposal.tokenAddress,
@@ -196,16 +196,16 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
                 )
             );
             require(success, "Failed to whitelist token");
-            
+
             // Reward proposer with additional reputation
             reputation[proposal.proposer] += reputationReward;
             emit ReputationChanged(proposal.proposer, reputation[proposal.proposer]);
-            
+
             proposal.status = ProposalStatus.Executed;
         } else {
             proposal.status = ProposalStatus.Rejected;
         }
-        
+
         emit ProposalExecuted(proposalId, proposal.tokenAddress, passed);
     }
 
@@ -217,7 +217,7 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
     function getUserReputation(address user) external view returns (uint256) {
         return reputation[user];
     }
-    
+
     /**
      * @dev Get proposal details
      * @param proposalId The ID of the proposal
@@ -230,19 +230,23 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
      * @return noVotes The number of votes against
      * @return status The current status of the proposal
      */
-    function getProposalInfo(uint256 proposalId) external view returns (
-        address proposer,
-        address tokenAddress,
-        string memory tokenName,
-        string memory tokenSymbol,
-        uint256 votingDeadline,
-        uint256 yesVotes,
-        uint256 noVotes,
-        ProposalStatus status
-    ) {
+    function getProposalInfo(uint256 proposalId)
+        external
+        view
+        returns (
+            address proposer,
+            address tokenAddress,
+            string memory tokenName,
+            string memory tokenSymbol,
+            uint256 votingDeadline,
+            uint256 yesVotes,
+            uint256 noVotes,
+            ProposalStatus status
+        )
+    {
         require(proposalId < proposalCount, "Proposal does not exist");
         Proposal storage proposal = proposals[proposalId];
-        
+
         return (
             proposal.proposer,
             proposal.tokenAddress,
@@ -269,7 +273,7 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
         uint256 newReputationReward
     ) external onlyRole(OWNER_ROLE) {
         require(newVotingPeriod >= 1 days, "Voting period too short");
-        
+
         votingPeriod = newVotingPeriod;
         minReputation = newMinReputation;
         quorum = newQuorum;
@@ -284,7 +288,7 @@ contract ShariaDAO is IShariaDAO, AccessControl, ReentrancyGuard {
     function grantInitialReputation(address user, uint256 initialReputation) external onlyRole(OWNER_ROLE) {
         require(user != address(0), "Invalid address");
         require(reputation[user] == 0, "User already has reputation");
-        
+
         reputation[user] = initialReputation;
         emit ReputationChanged(user, initialReputation);
     }

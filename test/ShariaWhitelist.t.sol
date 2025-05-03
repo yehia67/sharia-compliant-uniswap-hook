@@ -19,7 +19,7 @@ contract TestShariaWhitelist is Test {
         // Deploy the whitelist contract
         vm.startPrank(owner);
         whitelist = new ShariaWhitelist();
-        
+
         // Set the DAO contract
         whitelist.setDAOContract(daoContract);
         vm.stopPrank();
@@ -41,22 +41,16 @@ contract TestShariaWhitelist is Test {
     function test_whitelistToken() public {
         // Only the DAO contract can whitelist tokens
         vm.startPrank(daoContract);
-        whitelist.whitelistToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            whitelistedBy,
-            block.timestamp
-        );
+        whitelist.whitelistToken(address(token), "Test Sharia Token", "TST", whitelistedBy, block.timestamp);
         vm.stopPrank();
 
         // Check that the token is whitelisted
         assertTrue(whitelist.isTokenWhitelisted(address(token)));
 
         // Check the token info
-        (string memory name, string memory symbol, address by, uint256 time, bool isWhitelisted) = 
+        (string memory name, string memory symbol, address by, uint256 time, bool isWhitelisted) =
             whitelist.getTokenInfo(address(token));
-        
+
         assertEq(name, "Test Sharia Token");
         assertEq(symbol, "TST");
         assertEq(by, whitelistedBy);
@@ -67,13 +61,7 @@ contract TestShariaWhitelist is Test {
     function test_emergencyRemoveFromWhitelist() public {
         // First whitelist a token
         vm.startPrank(daoContract);
-        whitelist.whitelistToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            whitelistedBy,
-            block.timestamp
-        );
+        whitelist.whitelistToken(address(token), "Test Sharia Token", "TST", whitelistedBy, block.timestamp);
         vm.stopPrank();
 
         // Now emergency remove it
@@ -85,20 +73,14 @@ contract TestShariaWhitelist is Test {
         assertFalse(whitelist.isTokenWhitelisted(address(token)));
 
         // Check the token info
-        (,,,,bool isWhitelisted) = whitelist.getTokenInfo(address(token));
+        (,,,, bool isWhitelisted) = whitelist.getTokenInfo(address(token));
         assertFalse(isWhitelisted);
     }
 
     function testFail_nonDAOCannotWhitelistToken() public {
         // Try to whitelist a token from a non-DAO address
         vm.startPrank(owner);
-        whitelist.whitelistToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            whitelistedBy,
-            block.timestamp
-        );
+        whitelist.whitelistToken(address(token), "Test Sharia Token", "TST", whitelistedBy, block.timestamp);
         vm.stopPrank();
     }
 
@@ -112,13 +94,7 @@ contract TestShariaWhitelist is Test {
     function testFail_nonOwnerCannotEmergencyRemove() public {
         // First whitelist a token
         vm.startPrank(daoContract);
-        whitelist.whitelistToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            whitelistedBy,
-            block.timestamp
-        );
+        whitelist.whitelistToken(address(token), "Test Sharia Token", "TST", whitelistedBy, block.timestamp);
         vm.stopPrank();
 
         // Try to emergency remove it from a non-owner address
@@ -130,25 +106,13 @@ contract TestShariaWhitelist is Test {
     function test_cannotWhitelistTokenTwice() public {
         // First whitelist a token
         vm.startPrank(daoContract);
-        whitelist.whitelistToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            whitelistedBy,
-            block.timestamp
-        );
+        whitelist.whitelistToken(address(token), "Test Sharia Token", "TST", whitelistedBy, block.timestamp);
         vm.stopPrank();
 
         // Try to whitelist it again
         vm.startPrank(daoContract);
         vm.expectRevert("Token already whitelisted");
-        whitelist.whitelistToken(
-            address(token),
-            "Test Sharia Token",
-            "TST",
-            whitelistedBy,
-            block.timestamp
-        );
+        whitelist.whitelistToken(address(token), "Test Sharia Token", "TST", whitelistedBy, block.timestamp);
         vm.stopPrank();
     }
 }
